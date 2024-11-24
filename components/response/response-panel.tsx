@@ -2,11 +2,19 @@
 
 import { useModelStore } from '@/lib/store/model-store'
 import { useState } from 'react'
+import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { callModelApi } from '@/lib/api/model-api'
-import { ChevronDown, ChevronUp } from 'lucide-react'
 
 export function ResponsePanel() {
-  const { models, userPrompt, useUnifiedPrompt, unifiedSystemPrompt, responses, setResponse } = useModelStore()
+  const { 
+    models, 
+    responses, 
+    userPrompt, 
+    useUnifiedPrompt, 
+    unifiedSystemPrompt, 
+    setResponse 
+  } = useModelStore()
+  
   const [isLoading, setIsLoading] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
 
@@ -51,13 +59,26 @@ export function ResponsePanel() {
           <button
             onClick={handleSubmit}
             disabled={isLoading || !userPrompt || models.length === 0}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors"
+            className={`
+              glass-panel flex items-center gap-2 px-4 py-2 text-white/80
+              ${isLoading || !userPrompt || models.length === 0 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:text-white hover:scale-105'}
+              transition-all
+            `}
           >
-            {isLoading ? '请求中...' : '发送请求'}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                请求中...
+              </>
+            ) : (
+              '发送请求'
+            )}
           </button>
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+            className="text-white/80 hover:text-white transition-colors"
           >
             {isCollapsed ? (
               <>

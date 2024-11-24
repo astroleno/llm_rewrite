@@ -9,7 +9,7 @@ export function AddModelButton() {
   return (
     <button
       onClick={addModel}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+      className="glass-panel flex items-center gap-2 px-4 py-2 text-white/80 hover:text-white transition-all hover:scale-105"
     >
       <PlusCircle size={20} />
       添加模型

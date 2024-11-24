@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { ModelConfig, ModelResponse } from '../types'
+import { ModelConfig, SystemPrompt, ModelResponse } from '../types'
 
 interface ModelStore {
   // 状态
@@ -9,6 +9,9 @@ interface ModelStore {
   unifiedSystemPrompt: string
   userPrompt: string
   responses: ModelResponse[]
+  
+  // 新增状态
+  systemPrompts: SystemPrompt[]
   
   // 操作方法
   addModel: () => void
@@ -19,6 +22,11 @@ interface ModelStore {
   setUserPrompt: (prompt: string) => void
   setResponse: (response: ModelResponse) => void
   clearResponses: () => void
+  
+  // 新增方法
+  addSystemPrompt: (name: string, content: string) => void
+  updateSystemPrompt: (id: string, updates: Partial<SystemPrompt>) => void
+  removeSystemPrompt: (id: string) => void
 }
 
 export const useModelStore = create<ModelStore>()(
@@ -29,6 +37,7 @@ export const useModelStore = create<ModelStore>()(
       unifiedSystemPrompt: '',
       userPrompt: '',
       responses: [],
+      systemPrompts: [],
 
       addModel: () => set((state) => ({
         models: [...state.models, {
@@ -63,7 +72,25 @@ export const useModelStore = create<ModelStore>()(
         ]
       })),
       
-      clearResponses: () => set({ responses: [] })
+      clearResponses: () => set({ responses: [] }),
+      
+      addSystemPrompt: (name, content) => set((state) => ({
+        systemPrompts: [...state.systemPrompts, {
+          id: crypto.randomUUID(),
+          name,
+          content
+        }]
+      })),
+      
+      updateSystemPrompt: (id, updates) => set((state) => ({
+        systemPrompts: state.systemPrompts.map(prompt =>
+          prompt.id === id ? { ...prompt, ...updates } : prompt
+        )
+      })),
+      
+      removeSystemPrompt: (id) => set((state) => ({
+        systemPrompts: state.systemPrompts.filter(prompt => prompt.id !== id)
+      })),
     }),
     {
       name: 'model-store',
@@ -71,6 +98,7 @@ export const useModelStore = create<ModelStore>()(
         models: state.models,
         useUnifiedPrompt: state.useUnifiedPrompt,
         unifiedSystemPrompt: state.unifiedSystemPrompt,
+        systemPrompts: state.systemPrompts,
       }),
     }
   )

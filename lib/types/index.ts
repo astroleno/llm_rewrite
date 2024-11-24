@@ -4,6 +4,7 @@ export interface ModelConfig {
   apiKey: string
   provider: typeof API_PROVIDERS[number]['id']
   proxyUrl?: string
+  systemPromptId?: string
   systemPrompt?: string
 }
 
@@ -104,3 +105,9 @@ export const API_PROVIDERS = [
     url: ''
   }
 ] as const
+
+export interface SystemPrompt {
+  id: string
+  name: string
+  content: string
+}
