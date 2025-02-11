@@ -4,6 +4,7 @@ import { useModelStore } from '@/lib/store/model-store'
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import { callModelApi } from '@/lib/api/model-api'
+import { ApiError } from '@/lib/utils/error-handler'
 
 export function ResponsePanel() {
   const { 
@@ -35,36 +36,33 @@ export function ResponsePanel() {
               ? unifiedSystemPrompt 
               : model.systemPrompt || ''
 
-            const response = await callModelApi(model, systemPrompt, userPrompt)
-            console.log('Model response:', response)
-            setResponse({ 
-              modelId: model.id, 
-              response: response.content,
-              reasoning: response.reasoning,
-              usage: response.usage
-            })
+            await callModelApi(
+              model, 
+              systemPrompt, 
+              userPrompt,
+              (content, reasoning) => {
+                // 实时更新响应
+                setResponse({ 
+                  modelId: model.id, 
+                  response: content,
+                  reasoning: reasoning,
+                  usage: null
+                })
+              }
+            )
           } catch (error) {
             console.error('Model error:', {
               modelType: model.modelType,
               provider: model.provider,
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof ApiError ? error.message : '未知错误',
+              details: error instanceof Error ? error.stack : String(error)
             })
-            
-            let errorMessage = '未知错误'
-            if (error instanceof Error) {
-              if (error.message.includes('Function call is not supported')) {
-                errorMessage = '此模型不支持函数调用功能'
-              } else if (error.message.includes('负载已饱和')) {
-                errorMessage = '服务器负载已满，请稍后重试'
-              } else {
-                errorMessage = error.message
-              }
-            }
             
             setResponse({
               modelId: model.id,
               response: '',
-              error: errorMessage
+              error: error instanceof ApiError ? error.message : '请求失败，请稍后重试',
+              usage: null
             })
           }
         })

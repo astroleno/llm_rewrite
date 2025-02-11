@@ -77,7 +77,7 @@ export const MODEL_PRESETS = [
   {
     id: 'GeminiMIXR1',
     name: 'GeminiMIXR1',
-    description: 'CyberMuggles GeminiMIXR1',
+    description: 'CyberMuggles G&R GeminiMIXR1',
     provider: 'cybermuggles'
   },
   // Siliconflow 模型
@@ -137,18 +137,18 @@ export type ModelPresetId = typeof MODEL_PRESETS[number]['id']
 export const API_PROVIDERS = [
   {
     id: 'cybermuggles',
-    name: 'CyberMuggles',
-    url: 'http://124.222.75.42:4120/v1/chat/completions'
+    name: 'CyberMuggles G&R',
+    url: 'http://124.222.75.42:4120'
   },
   {
     id: 'siliconflow',
     name: 'SiliconFlow',
-    url: 'https://api.siliconflow.cn/v1/chat/completions'
+    url: 'https://api.siliconflow.cn'
   },
   {
     id: 'yunwu',
     name: 'YunWu',
-    url: 'https://yunwu.ai/v1/chat/completions'
+    url: 'https://yunwu.ai'
   },
   {
     id: 'custom',

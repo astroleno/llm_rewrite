@@ -118,21 +118,21 @@ export const useModelStore = create<ModelStore>()(
         }
         
         const updatedModels = models.map(model => {
-          let apiKey = null
+          let apiKey = ''
           switch (model.provider) {
             case 'cybermuggles':
-              apiKey = process.env.NEXT_PUBLIC_CYBERMUGGLES_API_KEY
+              apiKey = process.env.NEXT_PUBLIC_CYBERMUGGLES_API_KEY || ''
               break
             case 'siliconflow':
-              apiKey = process.env.NEXT_PUBLIC_SILICONFLOW_API_KEY
+              apiKey = process.env.NEXT_PUBLIC_SILICONFLOW_API_KEY || ''
               break
             case 'yunwu':
-              apiKey = process.env.NEXT_PUBLIC_YUNWU_API_KEY
+              apiKey = process.env.NEXT_PUBLIC_YUNWU_API_KEY || ''
               break
             default:
               return model
           }
-          return apiKey ? { ...model, apiKey } : model
+          return { ...model, apiKey }
         })
         
         set({ models: updatedModels })

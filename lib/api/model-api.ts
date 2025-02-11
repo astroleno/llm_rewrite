@@ -1,12 +1,14 @@
-import { ModelConfig, XiApiRequestBody, XiApiResponse } from '@/lib/types'
-import { ApiError, handleApiError } from '@/lib/utils/error-handler'
-import { logger } from '@/lib/utils/logger'
+import OpenAI from 'openai'
+import { ModelConfig, ChatMessage, ModelResponse } from '../types'
+import { ApiError } from '../utils/error-handler'
+import { logger } from '../utils/logger'
 
 export async function callModelApi(
   model: ModelConfig,
   systemPrompt: string,
-  userPrompt: string
-): Promise<{ content: string; reasoning: string | undefined; usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; completion_tokens_details?: { function_tokens?: number; system_tokens?: number; user_tokens?: number; assistant_tokens?: number } } }> {
+  userPrompt: string,
+  onProgress?: (content: string, reasoning?: string) => void
+): Promise<ModelResponse> {
   if (!model.apiKey) {
     throw new ApiError('API Key 不能为空')
   }
@@ -25,151 +27,119 @@ export async function callModelApi(
     timestamp: new Date().toISOString()
   })
 
-  // 根据不同的提供商构建不同的请求体
-  let requestBody: any
-  
-  if (model.provider === 'cybermuggles') {
-    requestBody = {
-      model: model.modelType,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-      store: true,  // 存储对话历史
-      return_reasoning: true  // 返回推理过程
-    }
-  } else if (model.provider === 'siliconflow') {
-    requestBody = {
-      model: "deepseek-ai/DeepSeek-R1",
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      stream: false,
-      max_tokens: 512,
-      stop: ["null"],
-      temperature: 0.7,
-      top_p: 0.7,
-      top_k: 50,
-      frequency_penalty: 0.5,
-      n: 1,
-      response_format: { type: "text" }
-    }
-  } else if (model.provider === 'yunwu') {
-    requestBody = {
-      model: model.modelType,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      presence_penalty: 0,
-      frequency_penalty: 0,
-      top_p: 1,
-      stream: false
-    }
-  } else {
-    // CyberMuggles 的默认请求体
-    requestBody = {
-      model: model.modelType,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 1000
-    }
-  }
+  // 构建消息数组
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt }
+  ]
 
-  // 记录请求体
-  console.log('Request Body:', JSON.stringify(requestBody, null, 2))
+  // 构建完整的 URL
+  const baseUrl = model.proxyUrl || (
+    model.provider === 'siliconflow' 
+      ? 'https://api.siliconflow.cn/v1/chat/completions'
+      : model.provider === 'cybermuggles'
+      ? 'http://124.222.75.42:4120/v1/chat/completions'
+      : ''
+  )
 
   try {
-    const apiUrl = model.proxyUrl || 'https://api.xi-ai.net/v1/chat/completions'
-    console.log('Calling API:', apiUrl)
-    
-    const response = await fetch(apiUrl, {
+    // 直接使用 fetch 进行请求
+    const response = await fetch(baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${model.apiKey}`,
-        'Accept': 'application/json'
+        'Authorization': `Bearer ${model.apiKey}`
       },
-      body: JSON.stringify(requestBody)
-    })
-
-    logger.info({
-      type: 'response',
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries()),
-      provider: model.provider,
-      modelType: model.modelType
+      body: JSON.stringify({
+        model: model.modelType === 'custom' ? model.customModelType || '' : model.modelType,
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000,
+        stream: true
+      })
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      logger.error({
-        type: 'error',
-        status: response.status,
-        statusText: response.statusText,
-        errorText,
-        provider: model.provider,
-        modelType: model.modelType
-      })
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new ApiError(
-          `API调用失败: ${errorJson.message || errorJson.error?.message}`,
-          response.status,
-          errorJson
-        )
-      } catch (e) {
-        throw new ApiError(
-          `API调用失败: ${errorText}`,
-          response.status,
-          errorText
-        )
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw new Error('Stream not supported')
+    }
+
+    let content = ''
+    let reasoning = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      // 处理流式数据
+      const chunk = new TextDecoder().decode(value)
+      const lines = chunk.split('\n').filter(line => line.trim() !== '')
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6)
+          if (data === '[DONE]') continue
+
+          try {
+            const parsed = JSON.parse(data)
+            if (parsed.choices[0]?.delta?.content) {
+              content += parsed.choices[0].delta.content
+              if (onProgress) {
+                onProgress(content, reasoning)
+              }
+            }
+          } catch (e) {
+            console.warn('Failed to parse chunk:', e)
+          }
+        }
       }
     }
 
-    const contentType = response.headers.get('content-type')
-    if (!contentType?.includes('application/json')) {
-      const text = await response.text()
-      console.error('Invalid Content Type:', contentType)
-      console.error('Response Text:', text)
-      throw new ApiError(
-        'API返回了非JSON格式的响应',
-        response.status,
-        text
-      )
+    return {
+      modelId: model.id,
+      response: content,
+      reasoning: reasoning,
+      usage: {
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0
+      }
     }
 
-    const data: XiApiResponse = await response.json()
-    logger.info({
-      type: 'success',
-      provider: model.provider,
-      modelType: model.modelType,
-      usage: data.usage,
-      hasReasoning: !!data.choices[0].message.reasoning
-    })
-    return {
-      content: data.choices[0].message.content,
-      reasoning: data.choices[0].message.reasoning,
-      usage: data.usage
-    }
   } catch (error) {
+    let errorMessage = '未知错误'
+    
+    if (error instanceof Error) {
+      console.log('API Error details:', error)
+      errorMessage = error.message
+      if (error.message.includes('API key')) {
+        errorMessage = 'API Key 无效'
+      } else if (error.message.includes('Rate limit')) {
+        errorMessage = '请求频率超限'
+      } else if (error.message.includes('insufficient_quota')) {
+        errorMessage = 'API 配额不足'
+      } else if (error.message.includes('404')) {
+        errorMessage = 'API 地址无效，请检查 URL 配置'
+      } else if (error.message.includes('Connection') || error.message.includes('Failed to fetch')) {
+        errorMessage = '连接失败，请检查网络或 API 地址'
+      } else if (error.message.includes('timeout')) {
+        errorMessage = '请求超时，请稍后重试'
+      }
+    }
+
     logger.error({
       type: 'error',
-      error: error instanceof Error ? error.message : String(error),
       provider: model.provider,
-      modelType: model.modelType
+      modelType: model.modelType,
+      error: errorMessage,
+      details: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     })
-    if (error instanceof ApiError) {
-      throw error
-    }
-    throw new ApiError(handleApiError(error))
+
+    throw new ApiError(errorMessage)
   }
 } 
