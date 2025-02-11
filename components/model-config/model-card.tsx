@@ -4,7 +4,7 @@ import { API_PROVIDERS, ModelConfig, MODEL_PRESETS, SystemPrompt } from '@/lib/t
 import { useModelStore } from '@/lib/store/model-store'
 
 export function ModelCard({ model }: { model: ModelConfig }) {
-  const { updateModel, removeModel, systemPrompts } = useModelStore()
+  const { updateModel, removeModel, systemPrompts, authCode, setAuthCode, autoFillApiKey } = useModelStore()
 
   const handleProviderChange = (providerId: string) => {
     const provider = API_PROVIDERS.find(p => p.id === providerId)
@@ -85,7 +85,7 @@ export function ModelCard({ model }: { model: ModelConfig }) {
             }}
           >
             <option value="">选择模型</option>
-            {MODEL_PRESETS.map((preset) => (
+            {MODEL_PRESETS.filter(preset => preset.provider === model.provider).map((preset) => (
               <option key={preset.id} value={preset.id}>
                 {preset.name} - {preset.description}
               </option>
@@ -94,15 +94,17 @@ export function ModelCard({ model }: { model: ModelConfig }) {
         </div>
 
         {/* API Key */}
-        <div>
-          <label className="block text-sm font-medium text-white mb-1">
-            API Key
-          </label>
+        <div className="space-y-2">
+          <label className="text-white/80">API Key</label>
           <input
             type="password"
-            value={model.apiKey}
+            value={model.apiKey || ''}
             onChange={(e) => updateModel(model.id, { apiKey: e.target.value })}
-            className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-md px-3 py-2 text-white placeholder-white/50 hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+            className="flex-1 bg-white/10 rounded px-3 py-2 text-white"
+            placeholder="输入 API Key"
+            onCopy={(e) => e.preventDefault()}
+            onCut={(e) => e.preventDefault()}
+            onPaste={(e) => e.preventDefault()}
           />
         </div>
 

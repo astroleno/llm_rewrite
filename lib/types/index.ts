@@ -1,8 +1,8 @@
 export interface ModelConfig {
   id: string
   modelType: string
-  apiKey: string
-  provider: typeof API_PROVIDERS[number]['id']
+  apiKey?: string
+  provider: ApiProvider
   proxyUrl?: string
   systemPromptId?: string
   systemPrompt?: string
@@ -22,8 +22,20 @@ export interface XiApiResponse {
   choices: {
     message: {
       content: string
+      reasoning?: string
     }
   }[]
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+    completion_tokens_details?: {
+      function_tokens?: number
+      system_tokens?: number
+      user_tokens?: number
+      assistant_tokens?: number
+    }
+  }
 }
 
 export interface ChatMessage {
@@ -35,6 +47,18 @@ export interface ModelResponse {
   modelId: string
   response: string
   error?: string
+  reasoning?: string
+  usage?: {
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+    completion_tokens_details?: {
+      function_tokens?: number
+      system_tokens?: number
+      user_tokens?: number
+      assistant_tokens?: number
+    }
+  }
 }
 
 export interface ApiResponse {
@@ -49,6 +73,33 @@ export interface ApiResponse {
 }
 
 export const MODEL_PRESETS = [
+  // CyberMuggles 模型
+  {
+    id: 'GeminiMIXR1',
+    name: 'GeminiMIXR1',
+    description: 'CyberMuggles GeminiMIXR1',
+    provider: 'cybermuggles'
+  },
+  // Siliconflow 模型
+  {
+    id: 'deepseek-ai/DeepSeek-R1',
+    name: 'DeepSeek-R1',
+    description: 'Pro/deepseek-ai/DeepSeek-R1',
+    provider: 'siliconflow'
+  },
+  // Yunwu 模型
+  {
+    id: 'gemini-2.0-pro-exp-02-05',
+    name: 'Gemini 2.0 Pro',
+    description: 'Gemini 2.0 Pro Exp 02-05',
+    provider: 'yunwu'
+  },
+  {
+    id: 'gemini-2.0-flash-thinking-exp-01-21',
+    name: 'Gemini 2.0 Flash',
+    description: 'Gemini 2.0 Flash Thinking Exp 01-21',
+    provider: 'yunwu'
+  },
   {
     id: 'gpt-4o',
     name: 'GPT-4O',
@@ -85,9 +136,9 @@ export type ModelPresetId = typeof MODEL_PRESETS[number]['id']
 
 export const API_PROVIDERS = [
   {
-    id: 'xi-ai',
-    name: 'Xi-AI',
-    url: 'https://api.xi-ai.cn/v1/chat/completions'
+    id: 'cybermuggles',
+    name: 'CyberMuggles',
+    url: 'http://124.222.75.42:4120/v1/chat/completions'
   },
   {
     id: 'siliconflow',
@@ -97,7 +148,7 @@ export const API_PROVIDERS = [
   {
     id: 'yunwu',
     name: 'YunWu',
-    url: 'https://api.wlai.vip/v1/chat/completions'
+    url: 'https://yunwu.ai/v1/chat/completions'
   },
   {
     id: 'custom',
@@ -106,8 +157,38 @@ export const API_PROVIDERS = [
   }
 ] as const
 
+export type ApiProvider = typeof API_PROVIDERS[number]['id']
+
 export interface SystemPrompt {
   id: string
   name: string
   content: string
+}
+
+export interface SiliconflowRequestBody {
+  model: string
+  messages: {
+    role: 'system' | 'user' | 'assistant'
+    content: string
+  }[]
+  stream: boolean
+  max_tokens: number
+  stop: string[]
+  temperature: number
+  top_p: number
+  top_k: number
+  frequency_penalty: number
+  n: number
+  response_format: {
+    type: string
+  }
+  tools: {
+    type: string
+    function: {
+      description: string
+      name: string
+      parameters: Record<string, any>
+      strict: boolean
+    }
+  }[]
 }

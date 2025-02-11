@@ -9,10 +9,11 @@ export function AnimatedBackground() {
           backgroundSize: '400% 400%',
           backgroundImage: `linear-gradient(
             -45deg,
-            var(--instagram-purple),
-            var(--instagram-red),
-            var(--instagram-yellow),
-            var(--instagram-purple)
+            var(--gradient-1),
+            var(--gradient-2),
+            var(--gradient-3),
+            var(--gradient-4),
+            var(--gradient-5)
           )`
         }}
       />

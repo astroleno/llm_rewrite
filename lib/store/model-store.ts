@@ -2,6 +2,13 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { ModelConfig, SystemPrompt, ModelResponse } from '../types'
 
+const DEFAULT_MODEL: ModelConfig = {
+  id: '1',
+  provider: 'cybermuggles',
+  modelType: 'GeminiMIXR1',
+  proxyUrl: 'http://124.222.75.42:4120/v1/chat/completions'
+}
+
 interface ModelStore {
   // 状态
   models: ModelConfig[]
@@ -27,25 +34,30 @@ interface ModelStore {
   addSystemPrompt: (name: string, content: string) => void
   updateSystemPrompt: (id: string, updates: Partial<SystemPrompt>) => void
   removeSystemPrompt: (id: string) => void
+  
+  authCode: string
+  setAuthCode: (code: string) => void
+  autoFillAllApiKeys: () => void
 }
 
 export const useModelStore = create<ModelStore>()(
   persist(
-    (set) => ({
-      models: [],
+    (set, get) => ({
+      models: [DEFAULT_MODEL],
       useUnifiedPrompt: true,
       unifiedSystemPrompt: '',
       userPrompt: '',
       responses: [],
       systemPrompts: [],
+      authCode: '',
 
       addModel: () => set((state) => ({
         models: [...state.models, {
           id: crypto.randomUUID(),
           modelType: '',
           apiKey: '',
-          provider: 'xi-ai',
-          proxyUrl: 'https://api.xi-ai.cn/v1/chat/completions',
+          provider: 'cybermuggles',
+          proxyUrl: 'http://124.222.75.42:4120/v1/chat/completions',
         }]
       })),
 
@@ -91,6 +103,43 @@ export const useModelStore = create<ModelStore>()(
       removeSystemPrompt: (id) => set((state) => ({
         systemPrompts: state.systemPrompts.filter(prompt => prompt.id !== id)
       })),
+
+      setAuthCode: (code) => set({ authCode: code }),
+      
+      autoFillAllApiKeys: () => {
+        const { models } = get()
+        const authCode = prompt('请输入认证码以自动填充所有 API Key:')
+        
+        if (!authCode) return
+        
+        if (authCode !== process.env.NEXT_PUBLIC_AUTH_CODE) {
+          alert('认证码错误')
+          return
+        }
+        
+        const updatedModels = models.map(model => {
+          let apiKey = null
+          switch (model.provider) {
+            case 'cybermuggles':
+              apiKey = process.env.NEXT_PUBLIC_CYBERMUGGLES_API_KEY
+              break
+            case 'siliconflow':
+              apiKey = process.env.NEXT_PUBLIC_SILICONFLOW_API_KEY
+              break
+            case 'yunwu':
+              apiKey = process.env.NEXT_PUBLIC_YUNWU_API_KEY
+              break
+            default:
+              return model
+          }
+          return apiKey ? { ...model, apiKey } : model
+        })
+        
+        set({ models: updatedModels })
+        alert('所有 API Key 已自动填充')
+      },
+
+      autoFillApiKey: undefined,
     }),
     {
       name: 'model-store',

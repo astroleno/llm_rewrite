@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  --gradient-1: #cadcb6;
+  --gradient-2: #b2bf88;
+  --gradient-3: #9cba70;
+  --gradient-4: #6a8d52;
+  --gradient-5: #4c8045;
   --instagram-purple: #833AB4;
   --instagram-red: #FD1D1D;
   --instagram-yellow: #FCAF45;

@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
 export function ModelConfigPanel() {
-  const { models } = useModelStore()
+  const { models, autoFillAllApiKeys } = useModelStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   return (
@@ -15,6 +15,12 @@ export function ModelConfigPanel() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">模型配置</h2>
         <div className="flex items-center gap-4">
+          <button
+            onClick={autoFillAllApiKeys}
+            className="glass-panel flex items-center gap-2 px-4 py-2 text-white/80 hover:text-white transition-all hover:scale-105"
+          >
+            自动填充所有 API Key
+          </button>
           <AddModelButton />
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
